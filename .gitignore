@@ -60,11 +60,11 @@ frontend/.vite/
 # Environment / Secrets
 # -----------------------------
 .env
-.env.*
+# .env.*
 !.env.example
 backend/.env
 frontend/.env
-frontend/.env.*
+# frontend/.env.*
 
 # Common secret-like files
 *.pem

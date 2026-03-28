@@ -15,10 +15,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 const client = axios.create({
   baseURL: API_BASE,
-  timeout: 30000,   // 30s — LLM calls can be slow
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  timeout: 60000,  // 60 seconds
 })
 
 // Log errors in development
