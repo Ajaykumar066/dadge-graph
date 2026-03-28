@@ -171,16 +171,13 @@ export const NODE_CONFIG = {
     })
   
     const rfEdges = edges.map((edge) => ({
-      id:             edge.id,
-      source:         edge.startNode,
-      target:         edge.endNode,
-      label:          edge.type,
-      type:           'smoothstep',
-      animated:       false,
-      style:          { stroke: '#2a2d3a', strokeWidth: 1.5 },
-      labelStyle:     { fill: '#64748b', fontSize: 10 },
-      labelBgStyle:   { fill: '#0f1117', fillOpacity: 0.8 },
+      id:      edge.id,
+      source:  edge.startNode,
+      target:  edge.endNode,
+      type:    'straight',
+      style:   { stroke: '#3b82f655', strokeWidth: 0.8 },
+      // Remove label entirely — no label prop at all
     }))
-  
+    
     return { rfNodes, rfEdges }
   }

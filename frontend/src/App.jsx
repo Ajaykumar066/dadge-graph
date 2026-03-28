@@ -1,30 +1,37 @@
-import GraphCanvas from './components/GraphCanvas'
+import { useState }    from 'react'
+import GraphCanvas     from './components/GraphCanvas'
+import ChatPanel       from './components/ChatPanel'
+import StatsBar        from './components/StatsBar'
 
 export default function App() {
+  const [highlightedNodes, setHighlightedNodes] = useState([])
+
   return (
-    <div className="flex flex-col h-screen bg-graph-bg text-slate-200">
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}
+         className="bg-gray-950 text-gray-200">
+
       {/* Header */}
-      <div className="
-        flex items-center justify-between px-4 py-2
-        bg-graph-panel border-b border-graph-border flex-shrink-0
-      ">
+      <div className="flex items-center justify-between px-4 py-2
+                      bg-gray-900 border-b border-gray-800"
+           style={{ flexShrink: 0 }}>
         <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-graph-accent animate-pulse" />
-          <h1 className="text-sm font-semibold text-slate-200">
+          <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+          <span className="text-sm font-semibold">
             SAP Order-to-Cash Graph Explorer
-          </h1>
+          </span>
         </div>
-        <span className="text-xs text-slate-600">
-          Neo4j AuraDB · Groq LLM
-        </span>
+        <span className="text-xs text-gray-600">Neo4j AuraDB · Groq LLM</span>
       </div>
 
-      {/* Main content */}
-      <div className="flex flex-1 overflow-hidden">
-        <GraphCanvas />
+      {/* Stats Bar */}
+      <StatsBar />
+
+      {/* Main — Graph + Chat */}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+        <GraphCanvas highlightedNodeIds={highlightedNodes} />
+        <ChatPanel   onHighlightNodes={setHighlightedNodes} />
       </div>
+
     </div>
   )
-} 
-
-
+}

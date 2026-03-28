@@ -1,71 +1,65 @@
-/**
- * GraphNode.jsx
- *
- * Custom React Flow node component.
- * Renders a colored badge with the node type label and display name.
- *
- * WHY CUSTOM NODE:
- * React Flow's default node is a plain white box.
- * We need color-coded nodes with the entity type visible at a glance.
- */
-
 import { memo } from 'react'
 import { Handle, Position } from 'reactflow'
+import { getNodeConfig } from '../utils/graphConfig'
 
 function GraphNode({ data, selected }) {
-  const { config, displayName, nodeType, highlighted } = data
-
+  const { nodeType, displayName, highlighted } = data
+  const config   = getNodeConfig(nodeType)
   const isActive = selected || highlighted
 
   return (
-    <div
-      style={{
-        borderColor: isActive ? config.color : '#2a2d3a',
-        borderWidth:  isActive ? 2 : 1,
-        boxShadow:    isActive ? `0 0 12px ${config.color}66` : 'none',
-      }}
-      className="
-        rounded-lg border bg-[#1a1d27] cursor-pointer
-        transition-all duration-150 min-w-[140px] max-w-[160px]
-      "
-    >
-      {/* Top badge — node type */}
-      <div
-        style={{ backgroundColor: config.color }}
-        className="
-          rounded-t-lg px-2 py-0.5
-          flex items-center justify-between
-        "
-      >
-        <span className="text-xs font-bold text-white tracking-wide">
+    <div className="relative group" style={{ width: 14, height: 14 }}>
+      {/* Outer glow ring for highlighted nodes */}
+      {isActive && (
+        <div style={{
+          position:        'absolute',
+          top:             -6,
+          left:            -6,
+          width:           26,
+          height:          26,
+          borderRadius:    '50%',
+          border:          `2px solid ${config.color}`,
+          boxShadow:       `0 0 12px ${config.color}`,
+          animation:       'pulse 1.5s infinite',
+          pointerEvents:   'none',
+        }} />
+      )}
+
+      {/* The dot */}
+      <div style={{
+        width:           isActive ? 14 : 10,
+        height:          isActive ? 14 : 10,
+        borderRadius:    '50%',
+        backgroundColor: config.color,
+        boxShadow:       isActive
+          ? `0 0 16px ${config.color}, 0 0 32px ${config.color}88`
+          : `0 0 4px ${config.color}66`,
+        border:          isActive ? '2px solid white' : 'none',
+        transition:      'all 0.2s ease',
+        cursor:          'pointer',
+        position:        'relative',
+        zIndex:          isActive ? 10 : 1,
+      }} />
+
+      {/* Tooltip */}
+      <div className="
+        absolute left-5 top-1/2 -translate-y-1/2
+        bg-gray-900 border border-gray-700 rounded
+        px-2 py-1 text-xs text-white whitespace-nowrap
+        opacity-0 group-hover:opacity-100
+        pointer-events-none z-50 shadow-xl
+        transition-opacity duration-150
+      ">
+        <span style={{ color: config.color }} className="font-bold mr-1">
           {config.label}
         </span>
-        <span className="text-xs text-white/70 truncate ml-1 max-w-[80px]">
-          {nodeType}
-        </span>
+        {displayName}
       </div>
 
-      {/* Body — display name */}
-      <div className="px-2 py-1.5">
-        <p
-          className="text-xs text-slate-200 truncate font-mono"
-          title={displayName}
-        >
-          {displayName || '—'}
-        </p>
-      </div>
-
-      {/* React Flow connection handles */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        style={{ background: config.color, width: 8, height: 8, border: 'none' }}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        style={{ background: config.color, width: 8, height: 8, border: 'none' }}
-      />
+      <Handle type="target" position={Position.Left}
+        style={{ opacity: 0, width: 1, height: 1 }} />
+      <Handle type="source" position={Position.Right}
+        style={{ opacity: 0, width: 1, height: 1 }} />
     </div>
   )
 }

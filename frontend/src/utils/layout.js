@@ -1,55 +1,49 @@
-/**
- * layout.js
- *
- * Auto-layout for graph nodes using dagre.
- *
- * WHY DAGRE:
- * Without layout, all nodes stack at position (0,0).
- * Dagre is a directed graph layout engine — it arranges nodes
- * in a clean top-to-bottom hierarchy that matches the O2C flow:
- * BusinessPartner → SalesOrder → Delivery → Billing → Payment
- */
+export function applyForceLayout(nodes, edges) {
+  if (!nodes.length) return { nodes, edges }
 
-import dagre from '@dagrejs/dagre'
+  const WIDTH   = 1200
+  const HEIGHT  = 800
+  const cx      = WIDTH  / 2
+  const cy      = HEIGHT / 2
 
-const NODE_WIDTH  = 160
-const NODE_HEIGHT = 60
-
-export function applyDagreLayout(nodes, edges, direction = 'LR') {
-  const dagreGraph = new dagre.graphlib.Graph()
-
-  dagreGraph.setDefaultEdgeLabel(() => ({}))
-  dagreGraph.setGraph({
-    rankdir:  direction,   // LR = left-to-right, TB = top-to-bottom
-    nodesep:  60,
-    ranksep:  100,
-    marginx:  40,
-    marginy:  40,
+  // Group nodes by type for cleaner clustering
+  const groups = {}
+  nodes.forEach(n => {
+    const type = n.data?.nodeType || 'Unknown'
+    if (!groups[type]) groups[type] = []
+    groups[type].push(n)
   })
 
-  nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, {
-      width:  NODE_WIDTH,
-      height: NODE_HEIGHT,
+  const groupNames  = Object.keys(groups)
+  const numGroups   = groupNames.length
+  const positioned  = {}
+
+  groupNames.forEach((type, gi) => {
+    const groupNodes  = groups[type]
+    const groupAngle  = (gi / numGroups) * 2 * Math.PI
+    const groupRadius = 280
+
+    // Center of this group cluster
+    const gcx = cx + Math.cos(groupAngle) * groupRadius
+    const gcy = cy + Math.sin(groupAngle) * groupRadius
+
+    groupNodes.forEach((node, ni) => {
+      const spread     = Math.min(60, 400 / groupNodes.length)
+      const nodeAngle  = (ni / groupNodes.length) * 2 * Math.PI
+      const nodeRadius = Math.min(spread * Math.sqrt(groupNodes.length), 120)
+
+      positioned[node.id] = {
+        x: gcx + Math.cos(nodeAngle) * nodeRadius,
+        y: gcy + Math.sin(nodeAngle) * nodeRadius,
+      }
     })
   })
 
-  edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target)
-  })
-
-  dagre.layout(dagreGraph)
-
-  const layoutedNodes = nodes.map((node) => {
-    const pos = dagreGraph.node(node.id)
-    return {
-      ...node,
-      position: {
-        x: pos.x - NODE_WIDTH  / 2,
-        y: pos.y - NODE_HEIGHT / 2,
-      },
-    }
-  })
-
-  return { nodes: layoutedNodes, edges }
+  return {
+    nodes: nodes.map(n => ({
+      ...n,
+      position: positioned[n.id] || { x: cx, y: cy },
+    })),
+    edges,
+  }
 }
