@@ -39,54 +39,46 @@ def serialize_relationship(rel) -> dict:
 
 @router.get("/overview")
 async def get_graph_overview(
-    limit: int = Query(default=100, ge=10, le=500)
+    limit: int = Query(default=100, ge=10, le=300)
 ):
     """
-    Returns a sample of nodes and relationships for the initial
-    graph visualization.
-
-    WHY LIMIT:
-    The full graph has 1,441 nodes. Rendering all of them at once
-    in the browser would be slow and unreadable. We return a
-    meaningful sample — the core O2C flow nodes — and let the
-    frontend expand from there.
-
-    The query fetches nodes that are part of the main flow:
-    BusinessPartner → SalesOrder → OutboundDelivery → BillingDocument
+    Returns the core O2C flow nodes only — excludes AVAILABLE_AT
+    relationships which dominate the graph and obscure the main flow.
     """
     driver = get_driver()
 
     try:
         with driver.session() as session:
             result = session.run(
-                """
-                MATCH (n)
-                WHERE n:BusinessPartner
-                   OR n:SalesOrder
-                   OR n:OutboundDelivery
-                   OR n:BillingDocument
-                   OR n:Product
-                   OR n:Plant
-                WITH n LIMIT $limit
-                OPTIONAL MATCH (n)-[r]->(m)
-                WHERE m:BusinessPartner
-                   OR m:SalesOrder
-                   OR m:OutboundDelivery
-                   OR m:BillingDocument
-                   OR m:Product
-                   OR m:Plant
-                RETURN collect(DISTINCT n) AS nodes,
-                       collect(DISTINCT m) AS targets,
-                       collect(DISTINCT r) AS rels
-                """,
-                {"limit": limit}
-            )
+                    """
+                    MATCH (n)
+                    WHERE n:BusinessPartner
+                    OR n:SalesOrder
+                    OR n:OutboundDelivery
+                    OR n:BillingDocument
+                    OR n:JournalEntry
+                    OR n:Payment
+                    OR n:Product
+                    WITH n LIMIT $limit
+
+                    OPTIONAL MATCH (n)-[r]->(m)
+                    WHERE type(r) IN [
+                        'PLACED', 'FULFILLED_BY', 'BILLED_AS',
+                        'RECORDED_IN', 'CLEARED_BY', 'BILLED_TO',
+                        'FOR_PRODUCT', 'HAS_ITEM'
+                    ]
+                    RETURN
+                        collect(DISTINCT n) AS nodes,
+                        collect(DISTINCT m) AS targets,
+                        collect(DISTINCT r) AS rels
+                    """,
+                    {"limit": limit}
+                )
 
             row = result.single()
             if not row:
                 return {"nodes": [], "edges": []}
 
-            # Combine source and target nodes, deduplicate by element_id
             all_nodes: dict[str, dict] = {}
             for node in row["nodes"] + row["targets"]:
                 if node is not None:
@@ -106,7 +98,6 @@ async def get_graph_overview(
     except Exception as e:
         logger.error(f"Graph overview error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 # ── Route 2: Node Detail + Neighbours ────────────────────────────────────────
 
@@ -265,3 +256,4 @@ async def get_graph_stats():
     except Exception as e:
         logger.error(f"Stats error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
