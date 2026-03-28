@@ -272,40 +272,79 @@ Showing first {len(display_rows)}:
 def extract_node_ids(rows: list[dict]) -> list[str]:
     """
     Extracts Neo4j element IDs from query results.
-    Used by the frontend to highlight referenced nodes in the graph.
+    Handles both node objects AND scalar ID values.
     """
     ids = []
+    
     for row in rows:
-        for value in row.values():
+        for key, value in row.items():
+            # Case 1: value is a node object with element_id
             if isinstance(value, dict) and "id" in value:
                 ids.append(value["id"])
-    return list(set(ids))  # deduplicate
+            # Case 2: value looks like a SAP document ID (string/number)
+            elif isinstance(value, (str, int)) and value:
+                found = _lookup_node_id(str(value))
+                if found:
+                    ids.extend(found)
 
+    return list(set(ids))
+
+
+def _lookup_node_id(value: str) -> list[str]:
+    """
+    Given a SAP document value (e.g. '90504248', 'SUNSCREEN GEL...'),
+    searches Neo4j for matching nodes and returns their element IDs.
+    """
+    if not value or len(value) < 3:
+        return []
+
+    driver = get_driver()
+    try:
+        with driver.session() as session:
+            result = session.run(
+                """
+                MATCH (n)
+                WHERE n.billingDocument      = $val
+                   OR n.salesOrder           = $val
+                   OR n.deliveryDocument     = $val
+                   OR n.product              = $val
+                   OR n.description          = $val
+                   OR n.businessPartner      = $val
+                   OR n.accountingDocument   = $val
+                   OR n.paymentId            = $val
+                RETURN elementId(n) AS eid
+                LIMIT 5
+                """,
+                {"val": value}
+            )
+            return [r["eid"] for r in result]
+    except Exception:
+        return []
 
 def run_query(question: str) -> dict:
     """
-    Main entry point for the chat pipeline.
+    Main entry point: NL question → Cypher → answer.
 
-    Returns a structured response with:
-    - answer:       natural language answer
-    - cypher:       the generated Cypher (for transparency/debugging)
-    - rows:         raw query results
-    - highlighted_nodes: node IDs to highlight in the graph
-    - is_domain:    whether the question was accepted
+    FLOW:
+    1. Guardrail check — reject off-topic questions immediately
+    2. Generate Cypher — LLM translates NL question into Cypher
+    3. Execute Cypher — run against Neo4j, get raw rows
+    4. Generate answer — LLM summarizes rows into natural language
+    5. Extract node IDs — so frontend can highlight referenced nodes
     """
+
     # ── Guardrail ─────────────────────────────────────────────
     if not _is_domain_question(question):
         return {
             "answer": (
-                "This system is designed to answer questions about the "
-                "SAP Order-to-Cash dataset only — including sales orders, "
-                "deliveries, billing documents, payments, products, and "
-                "customers. Please ask a question related to this data."
+                "I can only answer questions about SAP Order-to-Cash data, "
+                "such as sales orders, deliveries, billing documents, payments, "
+                "products, and business partners."
             ),
-            "cypher":             None,
-            "rows":               [],
-            "highlighted_nodes":  [],
-            "is_domain":          False,
+            "cypher":            "",
+            "rows":              [],
+            "highlighted_nodes": [],
+            "is_domain":         False,
         }
 
     # ── Generate Cypher ───────────────────────────────────────
@@ -318,18 +357,20 @@ def run_query(question: str) -> dict:
         rows = execute_cypher(cypher)
         logger.info(f"Query returned {len(rows)} rows")
     except Exception as e:
+        import traceback
         logger.error(f"Cypher execution failed: {e}")
+        logger.error(traceback.format_exc())
         return {
             "answer": (
-                f"I understood your question and generated a query, "
-                f"but it encountered an error during execution. "
-                f"Please try rephrasing your question."
+                "I understood your question and generated a query, "
+                "but it encountered an error during execution. "
+                "Please try rephrasing your question."
             ),
-            "cypher":             cypher,
-            "rows":               [],
-            "highlighted_nodes":  [],
-            "is_domain":          True,
-            "error":              str(e),
+            "cypher":            cypher,
+            "rows":              [],
+            "highlighted_nodes": [],
+            "is_domain":         True,
+            "error":             str(e),
         }
 
     # ── Summarize ─────────────────────────────────────────────
