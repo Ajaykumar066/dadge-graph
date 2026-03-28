@@ -39,9 +39,9 @@ The system is not a static Q&A bot. Every answer is grounded in live graph data 
 
 | Service  | URL |
 |----------|-----|
-| Frontend | https://your-app.vercel.app |
-| Backend API | https://your-api.onrender.com |
-| API Docs | https://your-api.onrender.com/docs |
+| Frontend | https://dadge-graph-git-main-ajaykumar066s-projects.vercel.app/ |
+| Backend API | https://dadge-graph.onrender.com |
+| API Docs | https://dadge-graph.onrender.com/docs |
 
 ---
 
