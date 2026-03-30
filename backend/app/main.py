@@ -71,6 +71,7 @@ from app.core.database import get_driver, close_driver
 from app.api.graph     import router as graph_router
 from app.api.chat      import router as chat_router
 from app.api.analytics import router as analytics_router
+from app.api.health    import router as health_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -111,6 +112,7 @@ def create_app() -> FastAPI:
     async def health():
         return {"status": "ok", "service": "SAP O2C Graph API"}
 
+    app.include_router(health_router)
     app.include_router(graph_router)
     app.include_router(chat_router)
     app.include_router(analytics_router)
